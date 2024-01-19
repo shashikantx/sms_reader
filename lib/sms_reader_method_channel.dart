@@ -10,20 +10,17 @@ class MethodChannelSmsReader extends SmsReaderPlatform {
   final methodChannel = const MethodChannel('sms_reader');
 
   @override
-  Future<String?> getPlatformVersion() async {
-    final version =
-        await methodChannel.invokeMethod<String>('getPlatformVersion');
-    return version;
-  }
-
-  @override
-  Future<List<Map<Object?, Object?>>> getInboxSms(
-      {int? page, int? pageSize, String? searchQuery}) async {
+  Future<List<Map<Object?, Object?>>> readInbox(
+      {int? page,
+      int? pageSize,
+      String? searchQuery,
+      String? sortOrder}) async {
     final inboxSms = await methodChannel
-        .invokeListMethod<Map<Object?, Object?>>('getInboxSms', {
+        .invokeListMethod<Map<Object?, Object?>>('readInbox', {
       'pageSize': pageSize ?? 10,
       'page': page ?? 1,
-      'searchQuery': searchQuery
+      'searchQuery': searchQuery,
+      'sortOrder': sortOrder ?? 'date ASC'
     });
     return inboxSms ?? [];
   }

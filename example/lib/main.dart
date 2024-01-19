@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -48,7 +50,7 @@ class _MyAppState extends State<MyApp> {
     //try reading sms
     try {
       List<Map<Object?, Object?>> inboxSms =
-          await _smsReaderPlugin.getInboxSms(page: page);
+          await _smsReaderPlugin.readInbox(page: page);
       setState(() {
         _inboxSms = inboxSms;
       });
@@ -89,8 +91,8 @@ class _MyAppState extends State<MyApp> {
     }
 
     page++;
-    List<Map<Object?, Object?>> inboxSms = await _smsReaderPlugin.getInboxSms(
-        page: page, searchQuery: searchQuery);
+    List<Map<Object?, Object?>> inboxSms =
+        await _smsReaderPlugin.readInbox(page: page, searchQuery: searchQuery);
     if (inboxSms.isEmpty) {
       hasMore = false;
     }
@@ -114,7 +116,7 @@ class _MyAppState extends State<MyApp> {
     try {
       page = 0;
       searchQuery = _searchController.text;
-      List<Map<Object?, Object?>> inboxSms = await _smsReaderPlugin.getInboxSms(
+      List<Map<Object?, Object?>> inboxSms = await _smsReaderPlugin.readInbox(
           page: page, searchQuery: searchQuery);
       setState(() {
         _inboxSms = inboxSms;
@@ -130,7 +132,7 @@ class _MyAppState extends State<MyApp> {
     reset();
     try {
       searchQuery = _searchController.text;
-      List<Map<Object?, Object?>> inboxSms = await _smsReaderPlugin.getInboxSms(
+      List<Map<Object?, Object?>> inboxSms = await _smsReaderPlugin.readInbox(
           page: page, searchQuery: searchQuery);
       setState(() {
         _inboxSms = inboxSms;
@@ -189,7 +191,15 @@ class _MyAppState extends State<MyApp> {
                     }
                   }
                   return ListTile(
-                    title: Text((_inboxSms[index]['address'] as String?) ?? ''),
+                    title: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text((_inboxSms[index]['address'] as String?) ?? ''),
+                        Text(DateTime.fromMillisecondsSinceEpoch(int.parse(
+                                (_inboxSms[index]['date'] as String?) ?? '0'))
+                            .toString()),
+                      ],
+                    ),
                     subtitle: Text((_inboxSms[index]['body'] as String?) ?? ''),
                   );
                 },

@@ -23,12 +23,8 @@ abstract class SmsReaderPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<String?> getPlatformVersion() {
-    throw UnimplementedError('platformVersion() has not been implemented.');
-  }
-
-  Future<List<Map<Object?, Object?>>> getInboxSms(
-      {int? page, int? pageSize, String? searchQuery}) {
-    throw UnimplementedError('getInboxSms() has not been implemented.');
+  Future<List<Map<Object?, Object?>>> readInbox(
+      {int? page, int? pageSize, String? searchQuery, String? sortOrder}) {
+    throw UnimplementedError('readInbox() has not been implemented.');
   }
 }

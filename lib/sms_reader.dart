@@ -1,13 +1,13 @@
 import 'sms_reader_platform_interface.dart';
 
 class SmsReader {
-  Future<String?> getPlatformVersion() {
-    return SmsReaderPlatform.instance.getPlatformVersion();
-  }
-
-  Future<List<Map<Object?, Object?>>> getInboxSms(
-      {int? page, int? pageSize, String? searchQuery}) {
-    return SmsReaderPlatform.instance
-        .getInboxSms(page: page, pageSize: pageSize, searchQuery: searchQuery);
+  Future<List<Map<Object?, Object?>>> readInbox(
+      {int? page, int? pageSize, String? searchQuery, String? sortOrder}) {
+    return SmsReaderPlatform.instance.readInbox(
+      page: page,
+      pageSize: pageSize,
+      searchQuery: searchQuery,
+      sortOrder: sortOrder,
+    );
   }
 }

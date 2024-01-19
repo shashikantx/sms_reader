@@ -22,6 +22,8 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
   private lateinit var context: Context
 
+  private final var SMS_PERMISSION_CODE: Int = 101;
+
   private companion object {
     const val COLUMN_ADDRESS = "address"
     const val COLUMN_BODY = "body"
@@ -40,11 +42,12 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
   override fun onMethodCall(call: MethodCall, result: Result) {
 
-    if (call.method == "getInboxSms") {
+    if (call.method == "readInbox") {
       val page = call.argument<Int>("page") ?: 0
       val pageSize = call.argument<Int>("pageSize") ?: 10
       val searchQuery = call.argument<String>("searchQuery")
-      val messages = getInboxSms(page, pageSize, searchQuery)
+      var sortOrder = call.argument<String?>("sortOrder")
+      val messages = readInbox(page, pageSize, searchQuery, sortOrder)
       result.success(messages)
     } else {
       result.notImplemented()
@@ -53,7 +56,8 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
   // content://sms/inbox
   // paginated query
-  fun getInboxSms(page: Int, pageSize: Int, searchQuery: String? = null): List<Map<String, Any?>> {
+  fun readInbox(page: Int, pageSize: Int, searchQuery: String? = null, sortOrder: String? = null): List<Map<String, Any?>> {
+
     val contentResolver: ContentResolver = context.contentResolver
     val cursorAll = contentResolver.query(Uri.parse("content://sms/inbox"), null, null, null, null)
     val total = cursorAll?.count ?: 0
@@ -77,14 +81,21 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
       null
     }
 
-    val sortOrder = "$COLUMN_DATE DESC LIMIT $pageSize OFFSET ${page * pageSize}"
+    val sortOrderString = if (sortOrder.isNullOrBlank()) {
+      "$COLUMN_DATE DESC"
+    } else {
+      sortOrder
+    }
+
+    val limit = "$pageSize"
+    val offset = "${page * pageSize}"
 
     val cursor = contentResolver.query(
       Uri.parse("content://sms/inbox"),
       null,
       selection,
       selectionArgs,
-      sortOrder
+      "$sortOrderString LIMIT $limit OFFSET $offset"
     )
 
     return cursor?.use { cursor ->
@@ -100,7 +111,6 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
       messages
     } ?: emptyList()
   }
-
 
   override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
     channel.setMethodCallHandler(null)
