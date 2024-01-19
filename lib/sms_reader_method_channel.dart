@@ -20,7 +20,7 @@ class MethodChannelSmsReader extends SmsReaderPlatform {
       'pageSize': pageSize ?? 10,
       'page': page ?? 1,
       'searchQuery': searchQuery,
-      'sortOrder': sortOrder ?? 'date ASC'
+      'sortOrder': sortOrder
     });
     return inboxSms ?? [];
   }
