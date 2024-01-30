@@ -1,8 +1,12 @@
 package co.wisne.sms_reader
 
+import android.app.Activity
+import android.app.Application
 import android.content.ContentResolver
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -10,10 +14,17 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.plugin.common.PluginRegistry.RequestPermissionsResultListener
+import io.flutter.plugin.common.PluginRegistry.ActivityResultListener;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import android.app.AlertDialog
+import android.content.Intent
+
 
 /** SmsReaderPlugin */
 
-class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
+class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, RequestPermissionsResultListener, ActivityResultListener {
   /// The MethodChannel that will the communication between Flutter and native Android
   ///
   /// This local reference serves to register the plugin with the Flutter Engine and unregister it
@@ -21,8 +32,13 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
   private lateinit var channel: MethodChannel
 
   private lateinit var context: Context
+  private var activityBinding: ActivityPluginBinding? = null
+  private var pluginBinding: FlutterPlugin.FlutterPluginBinding? = null
 
-  private final var SMS_PERMISSION_CODE: Int = 101;
+  private final var SMS_READ_PERMISSION_CODE: Int = 101;
+
+  private var onPermissionGranted: () -> Unit = {}
+  private var onPermissionDenied: () -> Unit = {}
 
   private companion object {
     const val COLUMN_ADDRESS = "address"
@@ -31,33 +47,96 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     const val COLUMN_TYPE = "type"
   }
 
-  override fun onAttachedToActivity(binding: ActivityPluginBinding) {
-    context = binding.activity
-  }
 
   override fun onAttachedToEngine(flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
+    this.context = flutterPluginBinding.getApplicationContext();
+    pluginBinding = flutterPluginBinding
     channel = MethodChannel(flutterPluginBinding.binaryMessenger, "sms_reader")
     channel.setMethodCallHandler(this)
   }
 
+  override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+    Log.d("SMS_READER","onAttachedActivity");
+    activityBinding = binding
+    activityBinding?.addRequestPermissionsResultListener(this)
+    activityBinding?.addActivityResultListener(this)
+  }
+
+
   override fun onMethodCall(call: MethodCall, result: Result) {
 
     if (call.method == "readInbox") {
-      val page = call.argument<Int>("page") ?: 0
-      val pageSize = call.argument<Int>("pageSize") ?: 10
-      val searchQuery = call.argument<String>("searchQuery")
-      var sortOrder = call.argument<String?>("sortOrder")
-      val messages = readInbox(page, pageSize, searchQuery, sortOrder)
-      result.success(messages)
+     onPermissionGranted = {
+       val page = call.argument<Int>("page") ?: 0
+       val pageSize = call.argument<Int>("pageSize") ?: 10
+       val searchQuery = call.argument<String>("searchQuery")
+       val sortOrder = call.argument<String?>("sortOrder")
+       val messages = readInbox(page, pageSize, searchQuery, sortOrder)
+       result.success(messages)
+     }
+
+      onPermissionDenied = {
+        result.error("PERMISSION_DENIED", "Permission denied", null)
+      }
+
+      handlePermission(activityBinding!!.getActivity(),
+        android.Manifest.permission.READ_SMS,
+        SMS_READ_PERMISSION_CODE,
+        onPermissionGranted,
+        onPermissionDenied)
     } else {
       result.notImplemented()
     }
   }
+  override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+    onAttachedToActivity(binding);
+  }
+
+  override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+    pluginBinding = null
+    channel.setMethodCallHandler(null)
+  }
+
+  override fun onDetachedFromActivityForConfigChanges() {}
+
+  override fun onDetachedFromActivity() {
+    activityBinding?.removeRequestPermissionsResultListener(this)
+    activityBinding?.removeActivityResultListener(this)
+    activityBinding = null
+  }
+
+  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
+    return false;
+  }
+
+  override fun onRequestPermissionsResult(
+    requestCode: Int,
+    permissions: Array<out String>,
+    grantResults: IntArray
+  ): Boolean {
+    when (requestCode) {
+      SMS_READ_PERMISSION_CODE -> {
+        if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+          // Permission granted, execute the provided function
+          onPermissionGranted.invoke()
+        } else {
+          // Permission denied, execute the provided function
+          onPermissionDenied.invoke()
+        }
+      }
+      else -> {
+        // Handle other permission requests if needed
+      }
+    }
+    return false;
+  }
+
 
   // content://sms/inbox
   // paginated query
   fun readInbox(page: Int, pageSize: Int, searchQuery: String? = null, sortOrder: String? = null): List<Map<String, Any?>> {
 
+    askPermission();
     val contentResolver: ContentResolver = context.contentResolver
     val cursorAll = contentResolver.query(Uri.parse("content://sms/inbox"), null, null, null, null)
     val total = cursorAll?.count ?: 0
@@ -112,13 +191,80 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     } ?: emptyList()
   }
 
-  override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-    channel.setMethodCallHandler(null)
+  fun askPermission() {
+    Log.i("SMS_READER","Asking Permission");
+    if (ContextCompat.checkSelfPermission(
+        context,
+        android.Manifest.permission.READ_SMS
+      ) != PackageManager.PERMISSION_GRANTED
+    ) {
+
+      Log.w("SMS_READER","READ_SMS Permission not granted");
+      if (ActivityCompat.shouldShowRequestPermissionRationale(
+          activityBinding!!.getActivity(),
+          android.Manifest.permission.READ_SMS
+        )
+      ) {
+        // Show an explanation to the user *asynchronously*
+        Log.w("SMS_READER","Show Rationale");
+        showPermissionExplainationDialog();
+      } else {
+        // No explanation needed, we can request the permission.
+        Log.w("SMS_READER","Rationale not required requesting permission");
+        ActivityCompat.requestPermissions(
+          activityBinding!!.getActivity(),
+          arrayOf(android.Manifest.permission.READ_SMS),
+          SMS_READ_PERMISSION_CODE
+        )
+        Log.w("SMS_READER","Permission Requested");
+      }
+    }
   }
 
-  override fun onDetachedFromActivityForConfigChanges() {}
+  fun showPermissionExplainationDialog() {
+    val builder = AlertDialog.Builder(context)
+    builder.setTitle("Permission Required")
+    builder.setMessage("We need permission to read SMS.")
 
-  override fun onDetachedFromActivity() {}
+    // Add "OK" button to dismiss the dialog
+    builder.setPositiveButton("OK") { _, _ ->
+      // Request the permission after the user acknowledges the explanation
+      ActivityCompat.requestPermissions(
+        context as android.app.Activity,
+        arrayOf(android.Manifest.permission.READ_SMS),
+        SMS_READ_PERMISSION_CODE
+      )
+    }
 
-  override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {}
+    // Add "Cancel" button to dismiss the dialog without requesting the permission
+    builder.setNegativeButton("Cancel") { _, _ ->
+      // Handle cancellation if needed
+      // You might want to inform the user that the app functionality will be limited without the permission
+    }
+
+    val dialog = builder.create()
+    dialog.show()
+  }
+
+
+  fun handlePermission(
+    activity: android.app.Activity,
+    permission: String,
+    requestCode: Int,
+    onPermissionGranted: () -> Unit,
+    onPermissionDenied: () -> Unit
+  ) {
+    if (ContextCompat.checkSelfPermission(activity, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+      // Permission already granted, execute the provided function
+      onPermissionGranted.invoke()
+    } else {
+      Log.w("SMS_READER","READ_SMS Permission not granted");
+      // Permission not granted, request the permission
+      activity.requestPermissions(arrayOf(permission), requestCode)
+      // You can handle the result of the request in onRequestPermissionsResult callback
+      // If the user grants the permission, onPermissionGranted will be executed
+      // If the user denies the permission, you can handle it in onPermissionDenied
+    }
+  }
+
 }
