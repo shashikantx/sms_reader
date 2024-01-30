@@ -10,4 +10,8 @@ class SmsReader {
       sortOrder: sortOrder,
     );
   }
+
+  Future<bool> canReadSms() {
+    return SmsReaderPlatform.instance.canReadSms();
+  }
 }

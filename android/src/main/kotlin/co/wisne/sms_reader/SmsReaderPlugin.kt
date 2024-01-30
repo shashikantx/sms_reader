@@ -66,6 +66,7 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, Request
   override fun onMethodCall(call: MethodCall, result: Result) {
 
     if (call.method == "readInbox") {
+
      onPermissionGranted = {
        val page = call.argument<Int>("page") ?: 0
        val pageSize = call.argument<Int>("pageSize") ?: 10
@@ -84,7 +85,11 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, Request
         SMS_READ_PERMISSION_CODE,
         onPermissionGranted,
         onPermissionDenied)
-    } else {
+    } else if (call.methods == "canReadSms") {
+      val canItReadSms = canReadSms()
+      result.success(canItReadSms)
+    }
+    else {
       result.notImplemented()
     }
   }
@@ -119,14 +124,29 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, Request
         if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
           // Permission granted, execute the provided function
           onPermissionGranted.invoke()
+          return true;
         } else {
           // Permission denied, execute the provided function
           onPermissionDenied.invoke()
+          return false;
         }
       }
       else -> {
         // Handle other permission requests if needed
       }
+    }
+    return false;
+  }
+
+  fun canReadSms() : Boolean {
+    //check if permission is granted
+    if(ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
+      //if permission is granted, check if it can read sms
+      val contentResolver: ContentResolver = context.contentResolver
+      val cursorAll = contentResolver.query(Uri.parse("content://sms/inbox"), null, null, null, null)
+      val total = cursorAll?.count ?: 0
+      cursorAll?.close()
+      return total > 0;
     }
     return false;
   }

@@ -24,4 +24,10 @@ class MethodChannelSmsReader extends SmsReaderPlatform {
     });
     return inboxSms ?? [];
   }
+
+  @override
+  Future<bool> canReadSms() async {
+    final canReadSms = await methodChannel.invokeMethod<bool>('canReadSms');
+    return canReadSms ?? false;
+  }
 }

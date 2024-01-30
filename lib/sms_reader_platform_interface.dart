@@ -27,4 +27,8 @@ abstract class SmsReaderPlatform extends PlatformInterface {
       {int? page, int? pageSize, String? searchQuery, String? sortOrder}) {
     throw UnimplementedError('readInbox() has not been implemented.');
   }
+
+  Future<bool> canReadSms() {
+    throw UnimplementedError('canReadSms() has not been implemented.');
+  }
 }
