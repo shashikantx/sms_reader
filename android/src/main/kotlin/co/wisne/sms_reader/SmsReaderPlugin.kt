@@ -41,10 +41,18 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, Request
   private var onPermissionDenied: () -> Unit = {}
 
   private companion object {
+    const val COLUMN_ID = "_id"
+    const val COLUMN_THREAD_ID = "thread_id"
     const val COLUMN_ADDRESS = "address"
+    const val COLUMN_PERSON = "person"
     const val COLUMN_BODY = "body"
     const val COLUMN_DATE = "date"
     const val COLUMN_TYPE = "type"
+    const val COLUMN_READ = "read"
+    const val COLUMN_STATUS = "status"
+    const val COLUMN_SERVICE_CENTER = "service_center"
+    const val COLUMN_PROTOCOL = "protocol"
+    const val COLUMN_SUBJECT = "subject"
   }
 
 
@@ -201,10 +209,19 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, Request
       val messages = mutableListOf<Map<String, Any?>>()
       while (cursor.moveToNext()) {
         val message = mutableMapOf<String, Any?>()
+        message[COLUMN_ID] = cursor.getString(cursor.getColumnIndex(COLUMN_ID))
+        message[COLUMN_THREAD_ID] = cursor.getString(cursor.getColumnIndex(COLUMN_THREAD_ID))
         message[COLUMN_ADDRESS] = cursor.getString(cursor.getColumnIndex(COLUMN_ADDRESS))
         message[COLUMN_BODY] = cursor.getString(cursor.getColumnIndex(COLUMN_BODY))
         message[COLUMN_DATE] = cursor.getString(cursor.getColumnIndex(COLUMN_DATE))
         message[COLUMN_TYPE] = cursor.getString(cursor.getColumnIndex(COLUMN_TYPE))
+        message[COLUMN_READ] = cursor.getString(cursor.getColumnIndex(COLUMN_READ))
+        message[COLUMN_STATUS] = cursor.getString(cursor.getColumnIndex(COLUMN_STATUS))
+        message[COLUMN_PERSON] = cursor.getString(cursor.getColumnIndex(COLUMN_PERSON))
+        message[COLUMN_SERVICE_CENTER] = cursor.getString(cursor.getColumnIndex(COLUMN_SERVICE_CENTER))
+        message[COLUMN_PROTOCOL] = cursor.getString(cursor.getColumnIndex(COLUMN_PROTOCOL))
+        message[COLUMN_SUBJECT] = cursor.getString(cursor.getColumnIndex(COLUMN_SUBJECT))
+
         messages.add(message)
       }
       messages
