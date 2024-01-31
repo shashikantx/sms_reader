@@ -9,6 +9,20 @@ class MethodChannelSmsReader extends SmsReaderPlatform {
   @visibleForTesting
   final methodChannel = const MethodChannel('sms_reader');
 
+  ///
+  /// [page] is the pagination page number, default is 1
+  /// [pageSize] is the number of sms to be returned per page, default is 10
+  /// [searchQuery] is the search query to be used to filter sms, default is null
+  /// [sortOrder] is the order to be used to sort sms, default is null e.g. 'date DESC'
+  /// ```dart
+  /// final inboxSms = await SmsReader.readInbox(
+  ///   page: 1,
+  ///   pageSize: 10,
+  ///   searchQuery: 'Flutter',
+  ///   sortOrder: 'date DESC'
+  /// );
+  /// ```
+  ///
   @override
   Future<List<Map<Object?, Object?>>> readInbox(
       {int? page,
