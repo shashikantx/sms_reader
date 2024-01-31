@@ -85,7 +85,7 @@ class SmsReaderPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, Request
         SMS_READ_PERMISSION_CODE,
         onPermissionGranted,
         onPermissionDenied)
-    } else if (call.methods == "canReadSms") {
+    } else if (call.method == "canReadSms") {
       val canItReadSms = canReadSms()
       result.success(canItReadSms)
     }
